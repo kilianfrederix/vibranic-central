@@ -1,5 +1,4 @@
 
-import Link from "next/link"
 import { appRegistry } from "@/lib/hub/registry"
 import { SidebarItem } from "./sidebar-item"
 
@@ -17,7 +16,7 @@ export function Sidebar() {
             <nav className="flex-1 overflow-auto p-2 space-y-1">
                 <SidebarItem
                     href="/"
-                    label="Overview"
+                    label="Dashboard"
                     external={false}
                 />
 
