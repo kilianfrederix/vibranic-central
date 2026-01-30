@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Sun, Moon } from 'lucide-react';
-import { useTheme } from "next-themes"
+// import { useTheme } from "next-themes"
 
 import { usePathname } from "next/navigation"
 import { Input } from "@/components/ui/input"
@@ -16,7 +16,7 @@ function getPageTitle(pathname: string) {
 
 export function Topbar() {
   const pathname = usePathname()
-  const { theme, setTheme } = useTheme()
+  // const { theme, setTheme } = useTheme()
 
   return (
     <header className="h-14 border-b bg-background flex items-center px-6">
@@ -34,7 +34,7 @@ export function Topbar() {
           className="w-48 h-8"
         />
 
-        <Button 
+        {/* <Button 
           variant="outline" 
           size="sm" 
           className="h-8"
@@ -42,7 +42,7 @@ export function Topbar() {
           suppressHydrationWarning
         >
           {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-        </Button>
+        </Button> */}
 
         <Button
           variant="outline"

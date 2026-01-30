@@ -212,7 +212,7 @@ export default function AdminDashboard() {
                                 warning: { icon: AlertTriangle, color: 'text-yellow-500' },
                                 down: { icon: XCircle, color: 'text-red-500' }
                             }
-                            const status = statusConfig[app.diagnostics.status]
+                            const status = statusConfig[app.diagnostics.status as keyof typeof statusConfig] || statusConfig.healthy
                             const StatusIcon = status.icon
 
                             return (

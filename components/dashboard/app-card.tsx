@@ -1,8 +1,5 @@
 'use client'
 
-import React from "react"
-import Link from "next/link"
-import { BadgeCheck, BadgeAlert, BadgeX } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Activity, AlertTriangle, CheckCircle2, XCircle } from "lucide-react"
@@ -28,11 +25,15 @@ const statusConfig = {
 }
 
 export function AppCard({ app }: Readonly<{ app: ExternalApp }>) {
-    const status = statusConfig[app.diagnostics.status]
+    // Default to 'healthy' if status is undefined or invalid
+    const statusKey = app.diagnostics?.status || 'healthy'
+    const status = statusConfig[statusKey as keyof typeof statusConfig] || statusConfig.healthy
     const StatusIcon = status.icon
 
+    // Ensure metrics is an array
+    const metrics = app.diagnostics?.metrics || []
+
     return (
-<<<<<<< HEAD
         <Link href={`/apps/${app.id}`}>
             <Card className="hover:shadow-lg transition-all hover:border-primary/50 cursor-pointer h-full">
                 <CardHeader className="pb-3">
@@ -46,12 +47,12 @@ export function AppCard({ app }: Readonly<{ app: ExternalApp }>) {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <p className="text-sm text-muted-foreground">
-                        {app.description}
+                        {app.description || 'No description'}
                     </p>
 
-                    {app.diagnostics.metrics.length > 0 && (
+                    {metrics.length > 0 && (
                         <div className="grid grid-cols-2 gap-3 pt-2 border-t">
-                            {app.diagnostics.metrics.slice(0, 2).map((metric) => (
+                            {metrics.slice(0, 2).map((metric) => (
                                 <div key={metric.key} className="space-y-1">
                                     <p className="text-xs text-muted-foreground">
                                         {metric.label}
@@ -68,25 +69,6 @@ export function AppCard({ app }: Readonly<{ app: ExternalApp }>) {
                         <Activity className="w-3 h-3" />
                         <span>View details</span>
                     </div>
-=======
-        <Link href={app.externalUrl} target="_blank" rel="noopener noreferrer">
-            <Card className="hover:shadow-lg transition-shadow">
-                <CardHeader className="flex justify-between">
-                    <CardTitle>{app.name}</CardTitle>
-                    <span>
-                        {
-                            app.diagnostics.status === "active" 
-                            ? <BadgeCheck className="text-green-500" /> 
-                            : app.diagnostics.status === "warning" 
-                            ? <BadgeAlert className="text-orange-500" /> 
-                            : <BadgeX className="text-red-500" />
-                            
-                        }
-                    </span>
-                </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground">{app.description}</p>
->>>>>>> 4e2c158bcd05b53c3bff46e279fdb6e710144920
                 </CardContent>
             </Card>
         </Link>
