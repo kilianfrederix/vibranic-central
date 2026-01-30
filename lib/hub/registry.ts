@@ -8,7 +8,7 @@ export const appRegistry: ExternalApp[] = [
         description: "Customer management",
         externalUrl: "https://crm.example.com",
         diagnostics: {
-            status: "healthy",
+            status: "active",
             metrics: [
                 { key: "users", label: "Active Users", value: "3.2k" },
                 { key: "uptime", label: "Uptime", value: "99.99%" }
@@ -22,6 +22,18 @@ export const appRegistry: ExternalApp[] = [
         externalUrl: "https://billing.example.com",
         diagnostics: {
             status: "warning",
+            metrics: [
+                { key: "failures", label: "Failed Charges", value: 12 }
+            ]
+        }
+    },
+    {
+        id: "billing-2",
+        name: "Billing-2",
+        description: "Payments & subscriptions",
+        externalUrl: "https://billing.example2.com",
+        diagnostics: {
+            status: "error",
             metrics: [
                 { key: "failures", label: "Failed Charges", value: 12 }
             ]

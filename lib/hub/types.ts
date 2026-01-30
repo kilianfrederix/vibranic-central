@@ -1,5 +1,5 @@
 
-export type AppStatus = "healthy" | "warning" | "down"
+export type AppStatus = "active" | "warning" | "error"
 
 export type DiagnosticMetric = {
     key: string
