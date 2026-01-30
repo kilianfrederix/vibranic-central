@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 
-import { ThemeProvider } from "@/components/theme-provider";
+// import { ThemeProvider } from "@/components/theme-provider";
 
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar"
@@ -34,13 +34,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <ThemeProvider
+        {/* <ThemeProvider
           attribute="class"
           defaultTheme="system"
           enableSystem
           disableTransitionOnChange
           storageKey="theme"
-        >
+        > */}
         <div className="flex h-screen bg-background">
           <Sidebar />
 
@@ -52,7 +52,7 @@ export default function RootLayout({
             </main>
           </div>
         </div>
-        </ThemeProvider>
+        {/* </ThemeProvider> */}
       </body>
     </html>
   );
