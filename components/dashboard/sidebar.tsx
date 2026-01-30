@@ -21,6 +21,18 @@ export function Sidebar() {
                     external={false}
                 />
 
+                <SidebarItem
+                    href="/admin"
+                    label="Admin Dashboard"
+                    external={false}
+                />
+
+                <SidebarItem
+                    href="/demo-app"
+                    label="Demo App"
+                    external={false}
+                />
+
                 <div className="pt-2">
                     <p className="px-3 text-xs font-medium text-muted-foreground uppercase">
                         Apps

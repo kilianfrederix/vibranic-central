@@ -1,0 +1,61 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model App {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  externalUrl String
+  apiKey      String   @unique @default(cuid())
+  iconUrl     String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  events      DiagnosticEvent[]
+  metrics     MetricSnapshot[]
+  
+  @@index([apiKey])
+}
+
+model DiagnosticEvent {
+  id        String   @id @default(cuid())
+  appId     String
+  app       App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  type      String
+  severity  String
+  message   String
+  details   Json?
+  
+  stackTrace String?
+  userAgent  String?
+  ipAddress  String?
+  
+  timestamp DateTime @default(now())
+  
+  @@index([appId, timestamp])
+  @@index([severity])
+  @@index([type])
+}
+
+model MetricSnapshot {
+  id        String   @id @default(cuid())
+  appId     String
+  app       App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  metricKey String
+  value     Float
+  unit      String?
+  
+  timestamp DateTime @default(now())
+  
+  @@index([appId, metricKey, timestamp])
+  @@index([metricKey])
+}
