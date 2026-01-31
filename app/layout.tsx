@@ -5,6 +5,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar"
 import { AuthProvider } from "@/components/auth-provider"
+import { ThemeProvider } from "@/components/theme-provider"
 
 const jetbrainsMono = JetBrains_Mono({subsets:['latin'],variable:'--font-sans'});
 
@@ -33,18 +34,25 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <AuthProvider>
-          <div className="flex h-screen bg-background">
-            <Sidebar />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <AuthProvider>
+            <div className="flex h-screen bg-background">
+              <Sidebar />
 
-            <div className="flex flex-col flex-1">
-              <Topbar />
-              <main className="flex-1 overflow-auto p-6">
-                {children}
-              </main>
+              <div className="flex flex-col flex-1">
+                <Topbar />
+                <main className="flex-1 overflow-auto p-6">
+                  {children}
+                </main>
+              </div>
             </div>
-          </div>
-        </AuthProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   );

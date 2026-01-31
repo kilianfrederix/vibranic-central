@@ -4,6 +4,7 @@ import * as React from "react"
 import { usePathname } from "next/navigation"
 import { UserMenu } from "@/components/dashboard/user-menu"
 import { SearchCommand } from "@/components/dashboard/search-command"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 function getPageTitle(pathname: string) {
   if (pathname === "/") return "Dashboard"
@@ -26,6 +27,7 @@ export function Topbar() {
 
       <div className="flex items-center gap-2">
         <SearchCommand />
+        <ThemeToggle />
         <UserMenu />
       </div>
     </header>

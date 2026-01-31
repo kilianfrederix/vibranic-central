@@ -86,6 +86,10 @@ These endpoints require authentication via headers:
 - `ADMIN_API_KEY` - Secret key for external admin API access
 
 ## Recent Changes
+- 2026-01-31: Added dark mode support
+  - Toggle button in header to switch themes
+  - Respects system preference by default
+  - Uses next-themes for persistence
 - 2026-01-31: Added global search functionality
   - Search apps by name and description
   - Search events by message and category
