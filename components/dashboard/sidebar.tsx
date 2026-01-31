@@ -2,13 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, AppWindow, Activity, Settings } from "lucide-react"
+import { Home, AppWindow, Activity, Bell, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const navItems = [
     { href: "/", label: "Dashboard", icon: Home },
     { href: "/apps", label: "Applications", icon: AppWindow },
     { href: "/events", label: "Events Log", icon: Activity },
+    { href: "/alerts", label: "Alerts", icon: Bell },
     { href: "/admin", label: "Admin", icon: Settings },
 ]
 

@@ -52,6 +52,38 @@ export async function POST(request: NextRequest) {
                     request.headers.get('x-real-ip') || null,
             }
         })
+        
+        // Record uptime status based on event severity
+        const uptimeStatus = severity === 'high' ? 'down' : severity === 'medium' ? 'warning' : 'healthy'
+        await prisma.uptimeRecord.create({
+            data: {
+                appId: app.id,
+                status: uptimeStatus,
+            }
+        })
+        
+        // Check and trigger alerts for high-severity events
+        if (severity === 'high') {
+            const alerts = await prisma.alert.findMany({
+                where: {
+                    enabled: true,
+                    OR: [
+                        { appId: app.id },
+                        { appId: null },
+                    ],
+                    condition: { in: ['high_severity', 'any_error'] },
+                },
+            })
+            
+            for (const alert of alerts) {
+                await prisma.alertHistory.create({
+                    data: {
+                        alertId: alert.id,
+                        message: `High severity event: ${message}`,
+                    }
+                })
+            }
+        }
 
         return NextResponse.json({
             success: true,

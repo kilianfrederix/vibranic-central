@@ -86,6 +86,13 @@ These endpoints require authentication via headers:
 - `ADMIN_API_KEY` - Secret key for external admin API access
 
 ## Recent Changes
+- 2026-01-31: Added real-time updates, time range filters, uptime tracking, CSV export, and alerts
+  - Dashboard auto-refreshes every 30 seconds with last updated time
+  - Time range filters on dashboard and events (1h, 24h, 7d, 30d)
+  - Uptime tracking records app health status when events are received
+  - CSV export for events and metrics with time range filtering
+  - Alerts page to configure notifications for critical events
+  - Alert triggers automatically recorded when high-severity events occur
 - 2026-01-31: Added dark mode support
   - Toggle button in header to switch themes
   - Respects system preference by default

@@ -20,6 +20,8 @@ model App {
   
   events      DiagnosticEvent[]
   metrics     MetricSnapshot[]
+  uptimeRecords UptimeRecord[]
+  alerts      Alert[]
   
   @@index([apiKey])
 }
@@ -77,4 +79,43 @@ model Session {
   expire  DateTime
   
   @@index([expire])
+}
+
+model UptimeRecord {
+  id        String   @id @default(cuid())
+  appId     String
+  app       App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  status    String
+  checkedAt DateTime @default(now())
+  
+  @@index([appId, checkedAt])
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  appId       String?
+  app         App?     @relation(fields: [appId], references: [id], onDelete: Cascade)
+  
+  name        String
+  condition   String
+  severity    String
+  enabled     Boolean  @default(true)
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([appId])
+}
+
+model AlertHistory {
+  id          String   @id @default(cuid())
+  alertId     String
+  
+  triggeredAt DateTime @default(now())
+  message     String
+  resolved    Boolean  @default(false)
+  resolvedAt  DateTime?
+  
+  @@index([alertId, triggeredAt])
 }
