@@ -30,14 +30,20 @@ export async function POST(request: NextRequest) {
         const body = await request.json()
         const metrics = Array.isArray(body) ? body : [body]
 
-        // Validate and create metrics
+        // Validate all metrics first
+        for (const metric of metrics) {
+            if (!metric.metricKey || metric.value === undefined) {
+                return NextResponse.json(
+                    { error: 'Missing required fields: metricKey, value' },
+                    { status: 400 }
+                )
+            }
+        }
+
+        // Create all metrics
         const createdMetrics = await Promise.all(
             metrics.map(async (metric) => {
                 const { metricKey, value, unit } = metric
-
-                if (!metricKey || value === undefined) {
-                    throw new Error('Missing required fields: metricKey, value')
-                }
 
                 return prisma.metricSnapshot.create({
                     data: {

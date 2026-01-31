@@ -180,9 +180,10 @@ export class VibranicClient {
         this.eventQueue = []
 
         try {
-            // Send events one by one (in production, you might batch these)
+            const failedEvents: DiagnosticEvent[] = []
+            
             for (const event of events) {
-                await fetch(`${this.config.hubUrl}/api/diagnostics/events`, {
+                const response = await fetch(`${this.config.hubUrl}/api/diagnostics/events`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -190,10 +191,20 @@ export class VibranicClient {
                     },
                     body: JSON.stringify(event)
                 })
+                
+                if (!response.ok) {
+                    console.error(`Failed to send event: ${response.status} ${response.statusText}`)
+                    if (response.status >= 500) {
+                        failedEvents.push(event)
+                    }
+                }
+            }
+            
+            if (failedEvents.length > 0) {
+                this.eventQueue.push(...failedEvents)
             }
         } catch (error) {
             console.error('Failed to send diagnostic events:', error)
-            // Re-queue failed events
             this.eventQueue.push(...events)
         }
     }
@@ -205,7 +216,7 @@ export class VibranicClient {
         this.metricQueue = []
 
         try {
-            await fetch(`${this.config.hubUrl}/api/diagnostics/metrics`, {
+            const response = await fetch(`${this.config.hubUrl}/api/diagnostics/metrics`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -213,9 +224,15 @@ export class VibranicClient {
                 },
                 body: JSON.stringify(metrics)
             })
+            
+            if (!response.ok) {
+                console.error(`Failed to send metrics: ${response.status} ${response.statusText}`)
+                if (response.status >= 500) {
+                    this.metricQueue.push(...metrics)
+                }
+            }
         } catch (error) {
             console.error('Failed to send metrics:', error)
-            // Re-queue failed metrics
             this.metricQueue.push(...metrics)
         }
     }
