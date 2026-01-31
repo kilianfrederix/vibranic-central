@@ -36,11 +36,12 @@ export async function getLoginUrl(callbackUrl: string) {
     return { authUrl: authUrl.href, codeVerifier, state }
 }
 
-export async function handleCallback(callbackUrl: string, searchParams: URLSearchParams, codeVerifier: string) {
+export async function handleCallback(callbackUrl: string, searchParams: URLSearchParams, codeVerifier: string, expectedState: string) {
     const config = await getOidcConfig()
     
     const tokens = await client.authorizationCodeGrant(config, new URL(`${callbackUrl}?${searchParams.toString()}`), {
         pkceCodeVerifier: codeVerifier,
+        expectedState,
     })
     
     const claims = tokens.claims()

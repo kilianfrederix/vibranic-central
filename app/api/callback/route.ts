@@ -28,7 +28,8 @@ export async function GET(request: NextRequest) {
         const { sessionId, expire } = await handleCallback(
             callbackUrl,
             request.nextUrl.searchParams,
-            codeVerifier
+            codeVerifier,
+            storedState
         )
         
         cookieStore.delete('oauth_code_verifier')
