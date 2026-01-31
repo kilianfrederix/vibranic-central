@@ -59,3 +59,22 @@ model MetricSnapshot {
   @@index([appId, metricKey, timestamp])
   @@index([metricKey])
 }
+
+model User {
+  id              String   @id @default(cuid())
+  email           String?  @unique
+  firstName       String?
+  lastName        String?
+  profileImageUrl String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model Session {
+  sid     String   @id
+  sess    Json
+  expire  DateTime
+  
+  @@index([expire])
+}
