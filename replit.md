@@ -44,6 +44,19 @@ PostgreSQL database is configured via the `DATABASE_URL` environment variable. T
 - `App` - Registered applications with API keys
 - `DiagnosticEvent` - Event logs from applications (errors, warnings, info)
 - `MetricSnapshot` - Performance metrics from applications
+- `User` - Authenticated users from Replit Auth
+- `Session` - User sessions with 1-week TTL
+
+## Authentication
+User authentication uses Replit Auth via OpenID Connect (OIDC):
+- `lib/auth.ts` - OIDC client setup and session management
+- `app/api/login/route.ts` - Initiates OAuth2 PKCE flow
+- `app/api/callback/route.ts` - Handles OAuth callback with state validation
+- `app/api/logout/route.ts` - Clears session
+- `app/api/auth/user/route.ts` - Returns current user info
+- `hooks/use-auth.ts` - React hook for auth state
+- `components/auth-provider.tsx` - Context provider for auth state
+- `components/protected-route.tsx` - HOC for protecting routes
 
 ## API Endpoints
 
@@ -73,6 +86,13 @@ These endpoints require authentication via headers:
 - `ADMIN_API_KEY` - Secret key for external admin API access
 
 ## Recent Changes
+- 2026-01-31: Added user authentication with Replit Auth
+  - Implemented OAuth2 PKCE flow with OIDC
+  - Created User and Session tables in PostgreSQL
+  - Added login/callback/logout API routes with state validation
+  - Built AuthProvider and useAuth hook for React components
+  - Added UserMenu component to header with profile and sign out
+  - ProtectedRoute component available for securing pages
 - 2026-01-31: Added admin dashboard for app management
   - Created app management UI with add/edit/delete functionality
   - Added API key viewing (masked by default) with copy and regenerate
