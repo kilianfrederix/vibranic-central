@@ -2,268 +2,466 @@
 
 import { useEffect, useState } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Activity, AlertTriangle, CheckCircle2, XCircle, TrendingUp, Users } from 'lucide-react'
-import { appRegistry } from '@/lib/hub/registry'
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from '@/components/ui/dialog'
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
+import { Plus, Copy, RefreshCw, Trash2, Pencil, Eye, EyeOff, ExternalLink, Check } from 'lucide-react'
 
-interface DiagnosticEvent {
+interface App {
     id: string
-    timestamp: string
-    type: string
-    severity: string
-    message: string
-    app: {
-        id: string
-        name: string
+    name: string
+    description: string | null
+    externalUrl: string
+    iconUrl: string | null
+    apiKey: string
+    createdAt: string
+    _count?: {
+        events: number
+        metrics: number
     }
 }
 
-const severityColors = {
-    low: 'bg-blue-500/10 text-blue-500',
-    medium: 'bg-yellow-500/10 text-yellow-500',
-    high: 'bg-orange-500/10 text-orange-500',
-    critical: 'bg-red-500/10 text-red-500'
-}
-
-const typeIcons = {
-    error: XCircle,
-    warning: AlertTriangle,
-    info: CheckCircle2,
-    debug: Activity
-}
-
 export default function AdminDashboard() {
-    const [events, setEvents] = useState<DiagnosticEvent[]>([])
+    const [apps, setApps] = useState<App[]>([])
     const [loading, setLoading] = useState(true)
+    const [isAddDialogOpen, setIsAddDialogOpen] = useState(false)
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+    const [editingApp, setEditingApp] = useState<App | null>(null)
+    const [visibleApiKeys, setVisibleApiKeys] = useState<Set<string>>(new Set())
+    const [copiedKey, setCopiedKey] = useState<string | null>(null)
+    const [formData, setFormData] = useState({
+        name: '',
+        description: '',
+        externalUrl: '',
+        iconUrl: ''
+    })
+    const [saving, setSaving] = useState(false)
 
     useEffect(() => {
-        fetchEvents()
-
-        // Poll for new events every 5 seconds
-        const interval = setInterval(fetchEvents, 5000)
-        return () => clearInterval(interval)
+        fetchApps()
     }, [])
 
-    const fetchEvents = async () => {
+    const fetchApps = async () => {
         try {
-            const response = await fetch('/api/diagnostics/events?limit=50')
+            const response = await fetch('/api/admin/apps')
             const data = await response.json()
-            setEvents(data.events || [])
+            setApps(data.apps || [])
         } catch (error) {
-            console.error('Failed to fetch events:', error)
+            console.error('Failed to fetch apps:', error)
         } finally {
             setLoading(false)
         }
     }
 
-    // Calculate stats
-    const stats = {
-        totalApps: appRegistry.length,
-        healthyApps: appRegistry.filter(a => a.diagnostics.status === 'healthy').length,
-        totalEvents: events.length,
-        criticalEvents: events.filter(e => e.severity === 'critical').length,
+    const handleAddApp = async () => {
+        if (!formData.name || !formData.externalUrl) return
+
+        setSaving(true)
+        try {
+            const response = await fetch('/api/admin/apps', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+
+            if (response.ok) {
+                await fetchApps()
+                setIsAddDialogOpen(false)
+                setFormData({ name: '', description: '', externalUrl: '', iconUrl: '' })
+            }
+        } catch (error) {
+            console.error('Failed to add app:', error)
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleEditApp = async () => {
+        if (!editingApp || !formData.name || !formData.externalUrl) return
+
+        setSaving(true)
+        try {
+            const response = await fetch(`/api/admin/apps/${editingApp.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            })
+
+            if (response.ok) {
+                await fetchApps()
+                setIsEditDialogOpen(false)
+                setEditingApp(null)
+                setFormData({ name: '', description: '', externalUrl: '', iconUrl: '' })
+            }
+        } catch (error) {
+            console.error('Failed to edit app:', error)
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleDeleteApp = async (appId: string) => {
+        try {
+            const response = await fetch(`/api/admin/apps/${appId}`, {
+                method: 'DELETE'
+            })
+
+            if (response.ok) {
+                await fetchApps()
+            }
+        } catch (error) {
+            console.error('Failed to delete app:', error)
+        }
+    }
+
+    const handleRegenerateKey = async (appId: string) => {
+        try {
+            const response = await fetch(`/api/admin/apps/${appId}/regenerate-key`, {
+                method: 'POST'
+            })
+
+            if (response.ok) {
+                await fetchApps()
+            }
+        } catch (error) {
+            console.error('Failed to regenerate key:', error)
+        }
+    }
+
+    const toggleApiKeyVisibility = (appId: string) => {
+        setVisibleApiKeys(prev => {
+            const next = new Set(prev)
+            if (next.has(appId)) {
+                next.delete(appId)
+            } else {
+                next.add(appId)
+            }
+            return next
+        })
+    }
+
+    const copyToClipboard = async (text: string, appId: string) => {
+        await navigator.clipboard.writeText(text)
+        setCopiedKey(appId)
+        setTimeout(() => setCopiedKey(null), 2000)
+    }
+
+    const openEditDialog = (app: App) => {
+        setEditingApp(app)
+        setFormData({
+            name: app.name,
+            description: app.description || '',
+            externalUrl: app.externalUrl,
+            iconUrl: app.iconUrl || ''
+        })
+        setIsEditDialogOpen(true)
+    }
+
+    const maskApiKey = (key: string) => {
+        return key.slice(0, 8) + '••••••••••••••••' + key.slice(-4)
     }
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold tracking-tight">Admin Dashboard</h1>
-                <p className="text-muted-foreground">
-                    Monitor all applications and diagnostic data
-                </p>
-            </div>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">App Management</h1>
+                    <p className="text-muted-foreground">
+                        Register and manage applications that connect to the hub
+                    </p>
+                </div>
 
-            {/* Stats Grid */}
-            <div className="grid gap-4 md:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Total Apps
-                        </CardTitle>
-                        <Activity className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalApps}</div>
-                        <p className="text-xs text-muted-foreground">
-                            {stats.healthyApps} healthy
-                        </p>
-                    </CardContent>
-                </Card>
+                <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="lg">
+                            <Plus className="w-4 h-4 mr-2" />
+                            Add New App
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                        <DialogHeader>
+                            <DialogTitle>Register New Application</DialogTitle>
+                            <DialogDescription>
+                                Add a new application to receive diagnostic events and metrics.
+                            </DialogDescription>
+                        </DialogHeader>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Events (24h)
-                        </CardTitle>
-                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{stats.totalEvents}</div>
-                        <p className="text-xs text-muted-foreground">
-                            Real-time monitoring
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            Critical Events
-                        </CardTitle>
-                        <AlertTriangle className="h-4 w-4 text-red-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-red-500">
-                            {stats.criticalEvents}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            Requires attention
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">
-                            System Health
-                        </CardTitle>
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-green-500">
-                            {Math.round((stats.healthyApps / stats.totalApps) * 100)}%
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            All systems operational
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-
-            {/* Main Content */}
-            <Tabs defaultValue="events" className="space-y-4">
-                <TabsList>
-                    <TabsTrigger value="events">Recent Events</TabsTrigger>
-                    <TabsTrigger value="apps">App Status</TabsTrigger>
-                    <TabsTrigger value="metrics">Metrics</TabsTrigger>
-                </TabsList>
-
-                <TabsContent value="events" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Event Stream</CardTitle>
-                            <CardDescription>
-                                Real-time diagnostic events from all applications
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            {loading ? (
-                                <p className="text-center text-muted-foreground py-8">
-                                    Loading events...
-                                </p>
-                            ) : events.length === 0 ? (
-                                <p className="text-center text-muted-foreground py-8">
-                                    No events yet. Start using your apps to see data here.
-                                </p>
-                            ) : (
-                                <div className="space-y-3">
-                                    {events.map((event) => {
-                                        const Icon = typeIcons[event.type as keyof typeof typeIcons] || Activity
-                                        return (
-                                            <div
-                                                key={event.id}
-                                                className="flex items-start gap-4 p-4 rounded-lg border hover:bg-muted/50 transition-colors"
-                                            >
-                                                <Icon className="w-5 h-5 mt-0.5 shrink-0" />
-
-                                                <div className="flex-1 min-w-0 space-y-1">
-                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                        <span className="font-medium">{event.app.name}</span>
-                                                        <Badge variant="outline" className={severityColors[event.severity as keyof typeof severityColors]}>
-                                                            {event.severity}
-                                                        </Badge>
-                                                        <Badge variant="outline" className="capitalize">
-                                                            {event.type}
-                                                        </Badge>
-                                                    </div>
-                                                    <p className="text-sm text-muted-foreground">
-                                                        {event.message}
-                                                    </p>
-                                                    <p className="text-xs text-muted-foreground">
-                                                        {new Date(event.timestamp).toLocaleString()}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
-                <TabsContent value="apps" className="space-y-4">
-                    <div className="grid gap-4 md:grid-cols-2">
-                        {appRegistry.map((app) => {
-                            const statusConfig = {
-                                healthy: { icon: CheckCircle2, color: 'text-green-500' },
-                                warning: { icon: AlertTriangle, color: 'text-yellow-500' },
-                                down: { icon: XCircle, color: 'text-red-500' }
-                            }
-                            const status = statusConfig[app.diagnostics.status as keyof typeof statusConfig] || statusConfig.healthy
-                            const StatusIcon = status.icon
-
-                            return (
-                                <Card key={app.id}>
-                                    <CardHeader>
-                                        <div className="flex items-start justify-between">
-                                            <CardTitle>{app.name}</CardTitle>
-                                            <StatusIcon className={`w-5 h-5 ${status.color}`} />
-                                        </div>
-                                        <CardDescription>{app.description}</CardDescription>
-                                    </CardHeader>
-                                    <CardContent>
-                                        <div className="space-y-2">
-                                            {app.diagnostics.metrics.map((metric) => (
-                                                <div key={metric.key} className="flex justify-between text-sm">
-                                                    <span className="text-muted-foreground">{metric.label}</span>
-                                                    <span className="font-medium">{metric.value}</span>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </CardContent>
-                                </Card>
-                            )
-                        })}
-                    </div>
-                </TabsContent>
-
-                <TabsContent value="metrics" className="space-y-4">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Metrics Dashboard</CardTitle>
-                            <CardDescription>
-                                Performance and usage metrics across all apps
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="h-80 flex items-center justify-center border rounded-lg bg-muted/20">
-                                <div className="text-center space-y-2">
-                                    <TrendingUp className="w-12 h-12 mx-auto text-muted-foreground" />
-                                    <p className="text-sm text-muted-foreground">
-                                        Metrics visualization coming soon
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Charts will appear here once metrics data is collected
-                                    </p>
-                                </div>
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="name">App Name *</Label>
+                                <Input
+                                    id="name"
+                                    placeholder="My Application"
+                                    value={formData.name}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                                />
                             </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="description">Description</Label>
+                                <Textarea
+                                    id="description"
+                                    placeholder="A brief description of your app"
+                                    value={formData.description}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="externalUrl">App URL *</Label>
+                                <Input
+                                    id="externalUrl"
+                                    placeholder="https://myapp.example.com"
+                                    value={formData.externalUrl}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, externalUrl: e.target.value }))}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="iconUrl">Icon URL (optional)</Label>
+                                <Input
+                                    id="iconUrl"
+                                    placeholder="https://example.com/icon.png"
+                                    value={formData.iconUrl}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, iconUrl: e.target.value }))}
+                                />
+                            </div>
+                        </div>
+
+                        <DialogFooter>
+                            <Button variant="outline" onClick={() => setIsAddDialogOpen(false)}>
+                                Cancel
+                            </Button>
+                            <Button onClick={handleAddApp} disabled={saving || !formData.name || !formData.externalUrl}>
+                                {saving ? 'Creating...' : 'Create App'}
+                            </Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+            </div>
+
+            {loading ? (
+                <div className="text-center py-12 text-muted-foreground">
+                    Loading apps...
+                </div>
+            ) : apps.length === 0 ? (
+                <Card>
+                    <CardContent className="py-12 text-center">
+                        <p className="text-muted-foreground mb-4">No applications registered yet</p>
+                        <Button onClick={() => setIsAddDialogOpen(true)}>
+                            <Plus className="w-4 h-4 mr-2" />
+                            Register Your First App
+                        </Button>
+                    </CardContent>
+                </Card>
+            ) : (
+                <div className="grid gap-4">
+                    {apps.map((app) => (
+                        <Card key={app.id}>
+                            <CardHeader>
+                                <div className="flex items-start justify-between">
+                                    <div className="space-y-1">
+                                        <CardTitle className="flex items-center gap-2">
+                                            {app.name}
+                                            <a
+                                                href={app.externalUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="text-muted-foreground hover:text-foreground"
+                                            >
+                                                <ExternalLink className="w-4 h-4" />
+                                            </a>
+                                        </CardTitle>
+                                        <CardDescription>
+                                            {app.description || 'No description'}
+                                        </CardDescription>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="outline">
+                                            {app._count?.events || 0} events
+                                        </Badge>
+                                        <Badge variant="outline">
+                                            {app._count?.metrics || 0} metrics
+                                        </Badge>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-muted-foreground text-xs">API Key</Label>
+                                    <div className="flex items-center gap-2">
+                                        <code className="flex-1 bg-muted px-3 py-2 rounded-md text-sm font-mono">
+                                            {visibleApiKeys.has(app.id) ? app.apiKey : maskApiKey(app.apiKey)}
+                                        </code>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => toggleApiKeyVisibility(app.id)}
+                                        >
+                                            {visibleApiKeys.has(app.id) ? (
+                                                <EyeOff className="w-4 h-4" />
+                                            ) : (
+                                                <Eye className="w-4 h-4" />
+                                            )}
+                                        </Button>
+                                        <Button
+                                            variant="outline"
+                                            size="icon"
+                                            onClick={() => copyToClipboard(app.apiKey, app.id)}
+                                        >
+                                            {copiedKey === app.id ? (
+                                                <Check className="w-4 h-4 text-green-500" />
+                                            ) : (
+                                                <Copy className="w-4 h-4" />
+                                            )}
+                                        </Button>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-center gap-2 pt-2 border-t">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => openEditDialog(app)}
+                                    >
+                                        <Pencil className="w-3 h-3 mr-1" />
+                                        Edit
+                                    </Button>
+
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="outline" size="sm">
+                                                <RefreshCw className="w-3 h-3 mr-1" />
+                                                Regenerate Key
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Regenerate API Key?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will invalidate the current API key. Any apps using it will stop working until updated with the new key.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction onClick={() => handleRegenerateKey(app.id)}>
+                                                    Regenerate
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button variant="destructive" size="sm">
+                                                <Trash2 className="w-3 h-3 mr-1" />
+                                                Delete
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent>
+                                            <AlertDialogHeader>
+                                                <AlertDialogTitle>Delete {app.name}?</AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    This will permanently delete the app and all its events and metrics. This action cannot be undone.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    onClick={() => handleDeleteApp(app.id)}
+                                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                                >
+                                                    Delete
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))}
+                </div>
+            )}
+
+            <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Edit Application</DialogTitle>
+                        <DialogDescription>
+                            Update the application details.
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-name">App Name *</Label>
+                            <Input
+                                id="edit-name"
+                                value={formData.name}
+                                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-description">Description</Label>
+                            <Textarea
+                                id="edit-description"
+                                value={formData.description}
+                                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-externalUrl">App URL *</Label>
+                            <Input
+                                id="edit-externalUrl"
+                                value={formData.externalUrl}
+                                onChange={(e) => setFormData(prev => ({ ...prev, externalUrl: e.target.value }))}
+                            />
+                        </div>
+
+                        <div className="space-y-2">
+                            <Label htmlFor="edit-iconUrl">Icon URL</Label>
+                            <Input
+                                id="edit-iconUrl"
+                                value={formData.iconUrl}
+                                onChange={(e) => setFormData(prev => ({ ...prev, iconUrl: e.target.value }))}
+                            />
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button onClick={handleEditApp} disabled={saving || !formData.name || !formData.externalUrl}>
+                            {saving ? 'Saving...' : 'Save Changes'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
