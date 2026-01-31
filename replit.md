@@ -48,15 +48,15 @@ PostgreSQL database is configured via the `DATABASE_URL` environment variable. T
 - `Session` - User sessions with 1-week TTL
 
 ## Authentication
-User authentication uses Replit Auth via OpenID Connect (OIDC):
-- `lib/auth.ts` - OIDC client setup and session management
-- `app/api/login/route.ts` - Initiates OAuth2 PKCE flow
-- `app/api/callback/route.ts` - Handles OAuth callback with state validation
-- `app/api/logout/route.ts` - Clears session
-- `app/api/auth/user/route.ts` - Returns current user info
-- `hooks/use-auth.ts` - React hook for auth state
-- `components/auth-provider.tsx` - Context provider for auth state
-- `components/protected-route.tsx` - HOC for protecting routes
+User authentication uses Clerk:
+- `middleware.ts` - Clerk middleware for session handling
+- `hooks/use-auth.ts` - React hook wrapping Clerk's useUser
+- `components/dashboard/user-menu.tsx` - Sign in/out using Clerk components
+- ClerkProvider wraps the app in `app/layout.tsx`
+
+Environment variables needed:
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk publishable key
+- `CLERK_SECRET_KEY` - Clerk secret key (stored as secret)
 
 ## API Endpoints
 
@@ -84,8 +84,14 @@ These endpoints require authentication via headers:
 ## Environment Variables
 - `DATABASE_URL` - PostgreSQL connection string
 - `ADMIN_API_KEY` - Secret key for external admin API access
+- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` - Clerk publishable key
+- `CLERK_SECRET_KEY` - Clerk secret key
 
 ## Recent Changes
+- 2026-01-31: Migrated authentication from Replit Auth to Clerk
+  - Removed custom OAuth implementation
+  - Using Clerk's built-in components (SignInButton, UserButton)
+  - Portable to any hosting platform
 - 2026-01-31: Added real-time updates, time range filters, uptime tracking, CSV export, and alerts
   - Dashboard auto-refreshes every 30 seconds with last updated time
   - Time range filters on dashboard and events (1h, 24h, 7d, 30d)

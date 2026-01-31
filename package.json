@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.1.0",
+    "@clerk/nextjs": "^6.37.1",
     "@prisma/client": "^6.9.0",
     "@types/connect-pg-simple": "^7.0.3",
     "@types/express-session": "^1.18.2",

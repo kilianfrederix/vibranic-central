@@ -1,54 +1,34 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-
-interface User {
-    id: string
-    email: string | null
-    firstName: string | null
-    lastName: string | null
-    profileImageUrl: string | null
-    createdAt: string
-    updatedAt: string
-}
+import { useUser, useAuth as useClerkAuth } from '@clerk/nextjs'
 
 interface AuthState {
-    user: User | null
+    user: {
+        id: string
+        email: string | null
+        firstName: string | null
+        lastName: string | null
+        profileImageUrl: string | null
+    } | null
     isLoading: boolean
     isAuthenticated: boolean
+    signOut: () => Promise<void>
 }
 
 export function useAuth(): AuthState {
-    const [user, setUser] = useState<User | null>(null)
-    const [isLoading, setIsLoading] = useState(true)
-    
-    useEffect(() => {
-        async function fetchUser() {
-            try {
-                const response = await fetch('/api/auth/user', {
-                    credentials: 'include',
-                })
-                
-                if (response.ok) {
-                    const userData = await response.json()
-                    setUser(userData)
-                } else {
-                    setUser(null)
-                }
-            } catch (error) {
-                console.error('Failed to fetch user:', error)
-                setUser(null)
-            } finally {
-                setIsLoading(false)
-            }
-        }
-        
-        fetchUser()
-    }, [])
+    const { user, isLoaded, isSignedIn } = useUser()
+    const { signOut } = useClerkAuth()
     
     return {
-        user,
-        isLoading,
-        isAuthenticated: !!user,
+        user: user ? {
+            id: user.id,
+            email: user.primaryEmailAddress?.emailAddress || null,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            profileImageUrl: user.imageUrl,
+        } : null,
+        isLoading: !isLoaded,
+        isAuthenticated: !!isSignedIn,
+        signOut: async () => { await signOut() },
     }
 }
