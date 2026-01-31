@@ -23,14 +23,13 @@ export async function GET(request: NextRequest) {
                     id: true,
                     name: true,
                     description: true,
-                    status: true,
                 },
             }),
             prisma.diagnosticEvent.findMany({
                 where: {
                     OR: [
                         { message: { contains: query, mode: 'insensitive' } },
-                        { category: { contains: query, mode: 'insensitive' } },
+                        { type: { contains: query, mode: 'insensitive' } },
                     ],
                 },
                 take: 5,
@@ -39,7 +38,7 @@ export async function GET(request: NextRequest) {
                     id: true,
                     message: true,
                     severity: true,
-                    category: true,
+                    type: true,
                     app: {
                         select: { name: true },
                     },
@@ -52,13 +51,13 @@ export async function GET(request: NextRequest) {
                 type: 'app' as const,
                 id: app.id,
                 title: app.name,
-                subtitle: app.description || `Status: ${app.status}`,
+                subtitle: app.description || 'Application',
             })),
             ...events.map((event) => ({
                 type: 'event' as const,
                 id: event.id,
                 title: event.message,
-                subtitle: `${event.severity} - ${event.app.name}${event.category ? ` - ${event.category}` : ''}`,
+                subtitle: `${event.severity} - ${event.app.name}${event.type ? ` - ${event.type}` : ''}`,
             })),
         ]
         
