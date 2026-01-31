@@ -1,4 +1,3 @@
-
 import { ExternalApp } from "./types"
 
 export const appRegistry: ExternalApp[] = [
@@ -8,7 +7,7 @@ export const appRegistry: ExternalApp[] = [
         description: "Customer management",
         externalUrl: "https://crm.example.com",
         diagnostics: {
-            status: "active",
+            status: "healthy",
             metrics: [
                 { key: "users", label: "Active Users", value: "3.2k" },
                 { key: "uptime", label: "Uptime", value: "99.99%" }
@@ -33,7 +32,7 @@ export const appRegistry: ExternalApp[] = [
         description: "Payments & subscriptions",
         externalUrl: "https://billing.example2.com",
         diagnostics: {
-            status: "error",
+            status: "down",
             metrics: [
                 { key: "failures", label: "Failed Charges", value: 12 }
             ]

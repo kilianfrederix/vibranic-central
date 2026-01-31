@@ -1,56 +1,50 @@
+'use client'
 
-import { appRegistry } from "@/lib/hub/registry"
-import { SidebarItem } from "./sidebar-item"
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { Home, AppWindow, Activity, Settings } from "lucide-react"
+import { cn } from "@/lib/utils"
+
+const navItems = [
+    { href: "/", label: "Dashboard", icon: Home },
+    { href: "/apps", label: "Applications", icon: AppWindow },
+    { href: "/events", label: "Events Log", icon: Activity },
+    { href: "/admin", label: "Admin", icon: Settings },
+]
 
 export function Sidebar() {
+    const pathname = usePathname()
+
     return (
         <aside className="w-64 border-r bg-background flex flex-col">
-            {/* Header */}
             <div className="h-14 px-4 flex items-center border-b">
-                <span className="font-semibold tracking-tight">
-                    <img src="./vibranic-central logo.png" alt="Vibranic Central Logo" className="h-8" />
+                <span className="font-semibold tracking-tight text-lg">
+                    Vibranic Central
                 </span>
             </div>
 
-            {/* Navigation */}
             <nav className="flex-1 overflow-auto p-2 space-y-1">
-                <SidebarItem
-                    href="/"
-                    label="Dashboard"
-                    external={false}
-                />
+                {navItems.map((item) => {
+                    const isActive = pathname === item.href || (item.href !== "/" && pathname.startsWith(`${item.href}/`))
+                    const Icon = item.icon
 
-                <SidebarItem
-                    href="/admin"
-                    label="Admin Dashboard"
-                    external={false}
-                />
-
-                <SidebarItem
-                    href="/demo-app"
-                    label="Demo App"
-                    external={false}
-                />
-
-                <div className="pt-2">
-                    <p className="px-3 text-xs font-medium text-muted-foreground uppercase">
-                        Apps
-                    </p>
-
-                    <div className="mt-1 space-y-1">
-                        {appRegistry.map((app) => (
-                            <SidebarItem
-                                key={app.id}
-                                href={app.externalUrl}
-                                label={app.name}
-                                external={true}
-                            />
-                        ))}
-                    </div>
-                </div>
+                    return (
+                        <Link
+                            key={item.href}
+                            href={item.href}
+                            className={cn(
+                                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                                "hover:bg-muted",
+                                isActive && "bg-muted font-medium"
+                            )}
+                        >
+                            <Icon className="h-4 w-4" />
+                            {item.label}
+                        </Link>
+                    )
+                })}
             </nav>
 
-            {/* Footer */}
             <div className="border-t p-3 text-xs text-muted-foreground">
                 v0.1.0
             </div>

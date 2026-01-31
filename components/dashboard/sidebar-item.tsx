@@ -3,17 +3,25 @@
 import { usePathname } from "next/navigation"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
+import { LucideIcon } from "lucide-react"
 
 type SidebarItemProps = {
     href: string
     label: string
-    external: boolean
+    icon?: LucideIcon
+    external?: boolean
 }
 
-export function SidebarItem({ href, label, external }: SidebarItemProps) {
+export function SidebarItem({ href, label, icon: Icon, external = false }: SidebarItemProps) {
     const pathname = usePathname()
-    const isActive =
-        pathname === href || pathname.startsWith(`${href}/`)
+    const isActive = pathname === href || (href !== "/" && pathname.startsWith(`${href}/`))
+
+    const content = (
+        <>
+            {Icon && <Icon className="h-4 w-4" />}
+            {label}
+        </>
+    )
 
     return external ? (
         <a
@@ -26,7 +34,7 @@ export function SidebarItem({ href, label, external }: SidebarItemProps) {
                 isActive && "bg-muted font-medium"
             )}
         >
-            {label}
+            {content}
         </a>
     ) : (
         <Link
@@ -37,7 +45,7 @@ export function SidebarItem({ href, label, external }: SidebarItemProps) {
                 isActive && "bg-muted font-medium"
             )}
         >
-            {label}
+            {content}
         </Link>
     )
 }
