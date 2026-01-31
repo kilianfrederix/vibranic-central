@@ -86,6 +86,10 @@ These endpoints require authentication via headers:
 - `ADMIN_API_KEY` - Secret key for external admin API access
 
 ## Recent Changes
+- 2026-01-31: Added global search functionality
+  - Search apps by name and description
+  - Search events by message and category
+  - Dropdown results with navigation to apps/events
 - 2026-01-31: Added user authentication with Replit Auth
   - Implemented OAuth2 PKCE flow with OIDC
   - Created User and Session tables in PostgreSQL

@@ -2,8 +2,8 @@
 
 import * as React from "react"
 import { usePathname } from "next/navigation"
-import { Input } from "@/components/ui/input"
 import { UserMenu } from "@/components/dashboard/user-menu"
+import { SearchCommand } from "@/components/dashboard/search-command"
 
 function getPageTitle(pathname: string) {
   if (pathname === "/") return "Dashboard"
@@ -25,11 +25,7 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-2">
-        <Input
-          placeholder="Search apps..."
-          className="w-48 h-8"
-        />
-
+        <SearchCommand />
         <UserMenu />
       </div>
     </header>
