@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AlertCircle, AlertTriangle, Info, ExternalLink, Copy, Check } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts'
-import { useState } from "react"
+import { useEffect, useState } from "react"
 
 type App = {
   id: string
@@ -52,6 +52,11 @@ const severityConfig = {
 export function AppDetailView({ app }: { app: App }) {
   const [copied, setCopied] = useState(false)
   const [showApiKey, setShowApiKey] = useState(false)
+  const [isclient, setIsClient] = useState(false)
+  
+      useEffect(() => {
+          setIsClient(true)
+      }, [])
 
   const copyApiKey = () => {
     navigator.clipboard.writeText(app.apiKey)

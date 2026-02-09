@@ -4,6 +4,8 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Home, AppWindow, Activity, Bell, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useState, useEffect } from "react"
+
 
 const navItems = [
     { href: "/", label: "Dashboard", icon: Home },
@@ -14,10 +16,16 @@ const navItems = [
 ]
 
 export function Sidebar() {
+    const [isclient, setIsClient] = useState(false)
+    useEffect(() => {
+        setIsClient(true)
+    }, [])
+
     const pathname = usePathname()
 
     return (
         <aside className="w-64 border-r bg-background flex flex-col">
+            <p>{isclient ? "Client" : "Server"}</p>
             <div className="h-14 px-4 flex items-center border-b">
                 <span className="font-semibold tracking-tight text-lg">
                     Vibranic Central
