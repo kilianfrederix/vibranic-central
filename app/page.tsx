@@ -100,7 +100,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <StatsCards {...data.stats} />
+      <StatsCards recentEvents={0} {...data.stats}  />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <EventsChart data={data.eventsOverTime} />
