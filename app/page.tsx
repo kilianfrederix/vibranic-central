@@ -6,8 +6,10 @@ import { EventsChart } from "@/components/dashboard/events-chart"
 import { RecentEvents } from "@/components/dashboard/recent-events"
 import { AppCard } from "@/components/dashboard/app-card"
 import { TimeRangeSelect } from "@/components/time-range-select"
-import { RefreshCw } from "lucide-react"
+import { PomodoroTimer } from "@/components/dashboard/PomodoroTimer"
+import { RefreshCw, Timer, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface DashboardData {
   stats: {
@@ -48,6 +50,7 @@ export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState("24h")
   const [isLoading, setIsLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [pomodoroOpen, setPomodoroOpen] = useState(false)
 
   const fetchDashboard = useCallback(async () => {
     try {
@@ -94,13 +97,15 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <Button variant="ghost" size="icon" onClick={fetchDashboard}>
-            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           </Button>
           <TimeRangeSelect value={timeRange} onChange={setTimeRange} />
         </div>
       </div>
 
-      <StatsCards recentEvents={0} {...data.stats}  />
+      <PomodoroTimer />
+
+      <StatsCards recentEvents={0} {...data.stats} />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <EventsChart data={data.eventsOverTime} />
@@ -110,11 +115,13 @@ export default function DashboardPage() {
       <div>
         <h2 className="text-xl font-semibold mb-4">Your Apps</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {data.apps.map(app => (
+          {data.apps.map((app) => (
             <AppCard key={app.id} app={app} />
           ))}
         </div>
       </div>
+
+      {/* Pomodoro Timer — collapsible section */}
     </div>
   )
 }
