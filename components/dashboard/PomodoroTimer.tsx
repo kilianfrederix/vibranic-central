@@ -110,23 +110,23 @@ export function PomodoroTimer() {
   useEffect(() => {
     const s = loadSaved()
     if (s) {
-      if (s.settings) setSettings({ ...DEFAULT_SETTINGS, ...s.settings })
+      if (s.settings) setSettings({ ...DEFAULT_SETTINGS, ...(s.settings as Partial<Settings>) })
       if (s.phase) setPhase(s.phase as Phase)
-      if (s.totalSeconds) setTotalSeconds(s.totalSeconds)
+      if (s.totalSeconds) setTotalSeconds(s.totalSeconds as number)
 
-      let secs: number = s.secondsLeft ?? DEFAULT_SETTINGS.focus * 60
-      let wasRunning: boolean = s.running ?? false
+      let secs: number = (s.secondsLeft as number | undefined) ?? DEFAULT_SETTINGS.focus * 60
+      let wasRunning: boolean = (s.running as boolean | undefined) ?? false
       if (s.running && s.savedAt) {
-        const elapsed = Math.floor((Date.now() - s.savedAt) / 1000)
+        const elapsed = Math.floor((Date.now() - (s.savedAt as number)) / 1000)
         secs = Math.max(0, secs - elapsed)
-        if (elapsed >= (s.secondsLeft ?? 0)) wasRunning = false
+        if (elapsed >= ((s.secondsLeft as number | undefined) ?? 0)) wasRunning = false
       }
       setSecondsLeft(secs)
       setRunning(wasRunning)
 
-      if (s.sessionsDone != null) setSessionsDone(s.sessionsDone)
-      if (s.focusMinutes != null) setFocusMinutes(s.focusMinutes)
-      if (s.history) setHistory(s.history)
+      if (s.sessionsDone != null) setSessionsDone(s.sessionsDone as number)
+      if (s.focusMinutes != null) setFocusMinutes(s.focusMinutes as number)
+      if (s.history) setHistory(s.history as HistoryEntry[])
     }
     setHydrated(true)
   // eslint-disable-next-line react-hooks/exhaustive-deps
