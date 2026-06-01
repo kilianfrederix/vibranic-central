@@ -104,14 +104,17 @@ model Alert {
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
+  history     AlertHistory[]
+
   @@index([appId])
 }
 
 model AlertHistory {
   id          String   @id @default(cuid())
   alertId     String
-  
+  alert       Alert    @relation(fields: [alertId], references: [id], onDelete: Cascade)
+
   triggeredAt DateTime @default(now())
   message     String
   resolved    Boolean  @default(false)

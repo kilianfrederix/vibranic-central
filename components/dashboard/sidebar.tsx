@@ -2,30 +2,23 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, AppWindow, Activity, Bell, Settings } from "lucide-react"
+import { Home, AppWindow, Activity, Bell, Timer, Settings } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { useState, useEffect } from "react"
-
 
 const navItems = [
     { href: "/", label: "Dashboard", icon: Home },
     { href: "/apps", label: "Applications", icon: AppWindow },
     { href: "/events", label: "Events Log", icon: Activity },
     { href: "/alerts", label: "Alerts", icon: Bell },
+    { href: "/pomodoro", label: "Pomodoro", icon: Timer },
     { href: "/admin", label: "Admin", icon: Settings },
 ]
 
 export function Sidebar() {
-    const [isclient, setIsClient] = useState(false)
-    useEffect(() => {
-        setIsClient(true)
-    }, [])
-
     const pathname = usePathname()
 
     return (
         <aside className="w-64 border-r bg-background flex flex-col">
-            <p>{isclient ? "Client" : "Server"}</p>
             <div className="h-14 px-4 flex items-center border-b">
                 <span className="font-semibold tracking-tight text-lg">
                     Vibranic Central
@@ -53,7 +46,6 @@ export function Sidebar() {
                     )
                 })}
             </nav>
-
             <div className="border-t p-3 text-xs text-muted-foreground">
                 v0.1.0
             </div>

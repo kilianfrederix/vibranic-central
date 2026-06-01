@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Bell, Plus, Trash2, Power, PowerOff } from "lucide-react"
+import { Bell, BellOff, BellRing, Check, Plus, Trash2, Power, PowerOff } from "lucide-react"
 import {
   Dialog,
   DialogContent,
@@ -36,17 +36,100 @@ interface App {
   name: string
 }
 
+interface HistoryEntry {
+  id: string
+  alertId: string
+  triggeredAt: string
+  message: string
+  resolved: boolean
+  resolvedAt: string | null
+  alert: {
+    name: string
+    condition: string
+    app: { name: string } | null
+  } | null
+}
+
+const conditionLabels: Record<string, string> = {
+  high_severity: "High severity event occurs",
+  any_error: "Any error event occurs",
+  app_down: "App goes down",
+  metric_threshold: "Metric exceeds threshold",
+}
+
+function severityVariant(s: string): "destructive" | "default" | "secondary" {
+  if (s === "high") return "destructive"
+  if (s === "medium") return "default"
+  return "secondary"
+}
+
+function relativeTime(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime()
+  const mins = Math.floor(diff / 60000)
+  if (mins < 1) return "just now"
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.floor(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.floor(hours / 24)}d ago`
+}
+
 export default function AlertsPage() {
   const [alerts, setAlerts] = useState<Alert[]>([])
   const [apps, setApps] = useState<App[]>([])
+  const [history, setHistory] = useState<HistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [notifPermission, setNotifPermission] = useState<NotificationPermission | "unsupported">("default")
+  const [inAppBanners, setInAppBanners] = useState<{ id: string; title: string; body: string }[]>([])
   const [newAlert, setNewAlert] = useState({
     name: "",
-    appId: "",
+    appId: "all",
     condition: "high_severity",
     severity: "high",
   })
+
+  // Track latest seen history entry to detect new ones for notifications
+  const latestSeenAt = useRef<string | null>(null)
+
+  // Read current notification permission on mount
+  useEffect(() => {
+    if (!("Notification" in window)) {
+      setNotifPermission("unsupported")
+    } else {
+      setNotifPermission(Notification.permission)
+    }
+  }, [])
+
+  const requestNotifPermission = async () => {
+    if (!("Notification" in window)) return
+    const result = await Notification.requestPermission()
+    setNotifPermission(result)
+  }
+
+  const fireNotification = (entry: HistoryEntry) => {
+    const title = `⚠️ Alert: ${entry.alert?.name ?? "Unknown alert"}`
+    const body = entry.message
+
+    // In-app banner — always works regardless of OS/browser notification settings
+    const bannerId = entry.id
+    setInAppBanners((prev) => {
+      if (prev.some((b) => b.id === bannerId)) return prev
+      return [...prev, { id: bannerId, title, body }]
+    })
+    // Auto-dismiss after 8 seconds
+    setTimeout(() => {
+      setInAppBanners((prev) => prev.filter((b) => b.id !== bannerId))
+    }, 8000)
+
+    // Browser notification — best effort, log errors instead of silently swallowing
+    if ("Notification" in window && Notification.permission === "granted") {
+      try {
+        new Notification(title, { body, icon: "/favicon.ico" })
+      } catch (err) {
+        console.warn("Browser notification failed:", err)
+      }
+    }
+  }
 
   const fetchAlerts = async () => {
     try {
@@ -69,9 +152,55 @@ export default function AlertsPage() {
     }
   }
 
+  const fetchHistory = async (isInitial = false) => {
+    try {
+      // On polling (not initial load), only ask for entries newer than last seen
+      const url = !isInitial && latestSeenAt.current
+        ? `/api/alerts/history?since=${encodeURIComponent(latestSeenAt.current)}`
+        : "/api/alerts/history"
+
+      const res = await fetch(url)
+      if (!res.ok) return
+
+      const data: HistoryEntry[] = await res.json()
+      if (!Array.isArray(data) || data.length === 0) return
+
+      if (isInitial) {
+        setHistory(data)
+        if (data.length > 0) {
+          latestSeenAt.current = data[0].triggeredAt
+          // Fire notifications for recent unresolved entries (triggered in the last 10 minutes)
+          // so coming back to the page still alerts you if something fired while you were away
+          const tenMinutesAgo = Date.now() - 10 * 60 * 1000
+          data
+            .filter((e) => !e.resolved && new Date(e.triggeredAt).getTime() > tenMinutesAgo)
+            .forEach(fireNotification)
+        }
+      } else {
+        // New entries — fire notifications and prepend to history list
+        data.forEach(fireNotification)
+        setHistory((prev) => [...data, ...prev].slice(0, 50))
+        latestSeenAt.current = data[0].triggeredAt
+      }
+    } catch (error) {
+      console.error("Failed to fetch alert history:", error)
+    }
+  }
+
+  // Initial load
   useEffect(() => {
-    fetchAlerts()
+    async function load() {
+      await Promise.all([fetchAlerts(), fetchHistory(true)])
+    }
+    void load()
   }, [])
+
+  // Poll history every 30s for new triggers
+  useEffect(() => {
+    const interval = setInterval(() => void fetchHistory(false), 30000)
+    return () => clearInterval(interval)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [notifPermission])
 
   const handleCreateAlert = async () => {
     try {
@@ -80,15 +209,15 @@ export default function AlertsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: newAlert.name,
-          appId: newAlert.appId || null,
+          appId: newAlert.appId === "all" ? null : newAlert.appId,
           condition: newAlert.condition,
           severity: newAlert.severity,
         }),
       })
       if (response.ok) {
         setIsDialogOpen(false)
-        setNewAlert({ name: "", appId: "", condition: "high_severity", severity: "high" })
-        fetchAlerts()
+        setNewAlert({ name: "", appId: "all", condition: "high_severity", severity: "high" })
+        void fetchAlerts()
       }
     } catch (error) {
       console.error("Failed to create alert:", error)
@@ -102,7 +231,7 @@ export default function AlertsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled: !enabled }),
       })
-      fetchAlerts()
+      void fetchAlerts()
     } catch (error) {
       console.error("Failed to toggle alert:", error)
     }
@@ -111,21 +240,51 @@ export default function AlertsPage() {
   const handleDeleteAlert = async (id: string) => {
     try {
       await fetch(`/api/alerts/${id}`, { method: "DELETE" })
-      fetchAlerts()
+      void fetchAlerts()
     } catch (error) {
       console.error("Failed to delete alert:", error)
     }
   }
 
-  const conditionLabels: Record<string, string> = {
-    high_severity: "High severity event occurs",
-    any_error: "Any error event occurs",
-    app_down: "App goes down",
-    metric_threshold: "Metric exceeds threshold",
+  const handleResolve = async (id: string) => {
+    try {
+      const res = await fetch(`/api/alerts/history/${id}`, { method: "PATCH" })
+      if (res.ok) {
+        // Re-fetch so the UI always reflects actual DB state
+        await fetchHistory(true)
+      }
+    } catch (error) {
+      console.error("Failed to resolve alert:", error)
+    }
   }
 
   return (
     <div className="space-y-6">
+      {/* In-app alert banners */}
+      {inAppBanners.length > 0 && (
+        <div className="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm">
+          {inAppBanners.map((banner) => (
+            <div
+              key={banner.id}
+              className="flex items-start gap-3 rounded-lg border border-destructive/50 bg-destructive/10 p-4 shadow-lg backdrop-blur"
+            >
+              <BellRing className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-destructive">{banner.title}</p>
+                <p className="text-xs text-muted-foreground mt-0.5 truncate">{banner.body}</p>
+              </div>
+              <button
+                onClick={() => setInAppBanners((prev) => prev.filter((b) => b.id !== banner.id))}
+                className="text-muted-foreground hover:text-foreground shrink-0 text-lg leading-none"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">Alerts</h1>
@@ -133,86 +292,107 @@ export default function AlertsPage() {
             Configure notifications for critical events
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Alert
+        <div className="flex items-center gap-2">
+          {/* Notification permission button */}
+          {notifPermission === "unsupported" ? null : notifPermission === "granted" ? (
+            <Button variant="outline" size="sm" disabled>
+              <BellRing className="h-4 w-4 mr-2 text-green-500" />
+              Notifications on
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Alert</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div>
-                <label className="text-sm font-medium">Alert Name</label>
-                <Input
-                  value={newAlert.name}
-                  onChange={(e) => setNewAlert({ ...newAlert, name: e.target.value })}
-                  placeholder="e.g., Critical Error Alert"
-                />
-              </div>
-              <div>
-                <label className="text-sm font-medium">App (optional)</label>
-                <Select
-                  value={newAlert.appId}
-                  onValueChange={(value) => setNewAlert({ ...newAlert, appId: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All apps" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="">All apps</SelectItem>
-                    {apps.map((app) => (
-                      <SelectItem key={app.id} value={app.id}>
-                        {app.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Condition</label>
-                <Select
-                  value={newAlert.condition}
-                  onValueChange={(value) => setNewAlert({ ...newAlert, condition: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high_severity">High severity event</SelectItem>
-                    <SelectItem value="any_error">Any error event</SelectItem>
-                    <SelectItem value="app_down">App goes down</SelectItem>
-                    <SelectItem value="metric_threshold">Metric threshold</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <label className="text-sm font-medium">Alert Severity</label>
-                <Select
-                  value={newAlert.severity}
-                  onValueChange={(value) => setNewAlert({ ...newAlert, severity: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleCreateAlert} className="w-full">
-                Create Alert
+          ) : notifPermission === "denied" ? (
+            <Button variant="outline" size="sm" disabled>
+              <BellOff className="h-4 w-4 mr-2 text-destructive" />
+              Notifications blocked
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={requestNotifPermission}>
+              <Bell className="h-4 w-4 mr-2" />
+              Enable notifications
+            </Button>
+          )}
+
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                New Alert
               </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Create Alert</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div>
+                  <label className="text-sm font-medium">Alert Name</label>
+                  <Input
+                    value={newAlert.name}
+                    onChange={(e) => setNewAlert({ ...newAlert, name: e.target.value })}
+                    placeholder="e.g., Critical Error Alert"
+                  />
+                </div>
+                <div>
+                  <label className="text-sm font-medium">App (optional)</label>
+                  <Select
+                    value={newAlert.appId}
+                    onValueChange={(value) => setNewAlert({ ...newAlert, appId: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="All apps" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All apps</SelectItem>
+                      {apps.map((app) => (
+                        <SelectItem key={app.id} value={app.id}>
+                          {app.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Condition</label>
+                  <Select
+                    value={newAlert.condition}
+                    onValueChange={(value) => setNewAlert({ ...newAlert, condition: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high_severity">High severity event</SelectItem>
+                      <SelectItem value="any_error">Any error event</SelectItem>
+                      <SelectItem value="app_down">App goes down</SelectItem>
+                      <SelectItem value="metric_threshold">Metric threshold</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <label className="text-sm font-medium">Alert Severity</label>
+                  <Select
+                    value={newAlert.severity}
+                    onValueChange={(value) => setNewAlert({ ...newAlert, severity: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="high">High</SelectItem>
+                      <SelectItem value="medium">Medium</SelectItem>
+                      <SelectItem value="low">Low</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button onClick={handleCreateAlert} className="w-full">
+                  Create Alert
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
+      {/* Configured alerts */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
@@ -234,18 +414,16 @@ export default function AlertsPage() {
               <CardHeader className="pb-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <Bell className={`h-5 w-5 ${alert.enabled ? 'text-primary' : 'text-muted-foreground'}`} />
+                    <Bell className={`h-5 w-5 ${alert.enabled ? "text-primary" : "text-muted-foreground"}`} />
                     <div>
                       <CardTitle className="text-base">{alert.name}</CardTitle>
                       <p className="text-sm text-muted-foreground">
-                        {alert.app ? alert.app.name : "All apps"} - {conditionLabels[alert.condition] || alert.condition}
+                        {alert.app ? alert.app.name : "All apps"} — {conditionLabels[alert.condition] || alert.condition}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge variant={alert.severity === 'high' ? 'destructive' : alert.severity === 'medium' ? 'default' : 'secondary'}>
-                      {alert.severity}
-                    </Badge>
+                    <Badge variant={severityVariant(alert.severity)}>{alert.severity}</Badge>
                     <Button
                       variant="ghost"
                       size="icon"
@@ -271,6 +449,70 @@ export default function AlertsPage() {
           ))}
         </div>
       )}
+
+      {/* Alert history feed */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base font-semibold flex items-center gap-2">
+            <BellRing className="h-4 w-4" />
+            Trigger History
+            {history.filter((e) => !e.resolved).length > 0 && (
+              <Badge variant="destructive" className="text-xs">
+                {history.filter((e) => !e.resolved).length} unresolved
+              </Badge>
+            )}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {history.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">
+              No alerts have triggered yet — send a high-severity event from the Demo App to test
+            </p>
+          ) : (
+            <div className="space-y-0.5">
+              {history.map((entry) => (
+                <div
+                  key={entry.id}
+                  className={`flex items-start justify-between gap-3 py-3 border-b border-border/40 last:border-0 ${
+                    entry.resolved ? "opacity-50" : ""
+                  }`}
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div
+                      className={`mt-1 w-2 h-2 rounded-full shrink-0 ${
+                        entry.resolved ? "bg-muted-foreground" : "bg-destructive"
+                      }`}
+                    />
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {entry.alert?.name ?? "Deleted alert"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{entry.message}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {entry.alert?.app?.name ?? "All apps"} · {relativeTime(entry.triggeredAt)}
+                        {entry.resolved && entry.resolvedAt && (
+                          <span> · resolved {relativeTime(entry.resolvedAt)}</span>
+                        )}
+                      </p>
+                    </div>
+                  </div>
+                  {!entry.resolved && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="shrink-0 h-7 w-7"
+                      onClick={() => handleResolve(entry.id)}
+                      title="Mark as resolved"
+                    >
+                      <Check className="h-3.5 w-3.5 text-green-500" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   )
 }

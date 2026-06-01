@@ -1,15 +1,13 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import { StatsCards } from "@/components/dashboard/stats-cards"
 import { EventsChart } from "@/components/dashboard/events-chart"
 import { RecentEvents } from "@/components/dashboard/recent-events"
-import { AppCard } from "@/components/dashboard/app-card"
 import { TimeRangeSelect } from "@/components/time-range-select"
-import { PomodoroTimer } from "@/components/dashboard/PomodoroTimer"
-import { RefreshCw, Timer, ChevronDown, ChevronUp } from "lucide-react"
+import { RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
+// import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 
 interface DashboardData {
   stats: {
@@ -32,17 +30,6 @@ interface DashboardData {
     warnings: number
     info: number
   }>
-  apps: Array<{
-    id: string
-    name: string
-    description?: string
-    externalUrl: string
-    iconUrl?: string
-    diagnostics: {
-      status: "healthy" | "warning" | "down"
-      metrics: Array<{ key: string; label: string; value: number }>
-    }
-  }>
 }
 
 export default function DashboardPage() {
@@ -50,28 +37,28 @@ export default function DashboardPage() {
   const [timeRange, setTimeRange] = useState("24h")
   const [isLoading, setIsLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
-  const [pomodoroOpen, setPomodoroOpen] = useState(false)
-
-  const fetchDashboard = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/dashboard?timeRange=${timeRange}`)
-      if (response.ok) {
-        const result = await response.json()
-        setData(result)
-        setLastUpdated(new Date())
-      }
-    } catch (error) {
-      console.error("Failed to fetch dashboard:", error)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [timeRange])
+  const [refreshTrigger, setRefreshTrigger] = useState(0)
 
   useEffect(() => {
-    fetchDashboard()
-    const interval = setInterval(fetchDashboard, 30000)
+    async function fetchDashboard() {
+      try {
+        const response = await fetch(`/api/dashboard?timeRange=${timeRange}`)
+        if (response.ok) {
+          const result = await response.json()
+          setData(result)
+          setLastUpdated(new Date())
+        }
+      } catch (error) {
+        console.error("Failed to fetch dashboard:", error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    void fetchDashboard()
+    const interval = setInterval(() => void fetchDashboard(), 30000)
     return () => clearInterval(interval)
-  }, [fetchDashboard])
+  }, [timeRange, refreshTrigger])
 
   if (isLoading || !data) {
     return (
@@ -96,14 +83,12 @@ export default function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={fetchDashboard}>
+          <Button variant="ghost" size="icon" onClick={() => setRefreshTrigger(t => t + 1)}>
             <RefreshCw className={`h-4 w-4 ${isLoading ? "animate-spin" : ""}`} />
           </Button>
           <TimeRangeSelect value={timeRange} onChange={setTimeRange} />
         </div>
       </div>
-
-      <PomodoroTimer />
 
       <StatsCards recentEvents={0} {...data.stats} />
 
@@ -112,16 +97,6 @@ export default function DashboardPage() {
         <RecentEvents events={data.recentEvents} />
       </div>
 
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Your Apps</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-          {data.apps.map((app) => (
-            <AppCard key={app.id} app={app} />
-          ))}
-        </div>
-      </div>
-
-      {/* Pomodoro Timer — collapsible section */}
     </div>
   )
 }

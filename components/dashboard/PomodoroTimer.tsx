@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
-import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX, Timer } from "lucide-react"
+import { Play, Pause, SkipForward, RotateCcw, Volume2, VolumeX } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -28,6 +28,7 @@ interface HistoryEntry {
 }
 
 const CIRCUMFERENCE = 502.65
+const STORAGE_KEY = "vibranic-pomodoro"
 
 const DEFAULT_SETTINGS: Settings = {
   focus: 25,
@@ -65,6 +66,16 @@ function getPhaseLabel(phase: Phase) {
   return "Long Break"
 }
 
+function loadSaved(): Record<string, unknown> | null {
+  if (typeof window === "undefined") return null
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch {
+    return null
+  }
+}
+
 function beep(type: "start" | "end") {
   try {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -77,18 +88,67 @@ function beep(type: "start" | "end") {
     gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4)
     osc.start()
     osc.stop(ctx.currentTime + 0.4)
-  } catch (_) {}
+  } catch (error) {
+    console.error("Failed to play beep:", error)
+  }
 }
 
 export function PomodoroTimer() {
-  const [phase, setPhase] = useState<Phase>("focus")
+  // All state starts at defaults — required for SSR to match client's first render
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS)
-  const [secondsLeft, setSecondsLeft] = useState(DEFAULT_SETTINGS.focus * 60)
+  const [phase, setPhase] = useState<Phase>("focus")
   const [totalSeconds, setTotalSeconds] = useState(DEFAULT_SETTINGS.focus * 60)
+  const [secondsLeft, setSecondsLeft] = useState(DEFAULT_SETTINGS.focus * 60)
   const [running, setRunning] = useState(false)
   const [sessionsDone, setSessionsDone] = useState(0)
   const [focusMinutes, setFocusMinutes] = useState(0)
   const [history, setHistory] = useState<HistoryEntry[]>([])
+  // hydrated = localStorage has been read and state restored
+  const [hydrated, setHydrated] = useState(false)
+
+  // After mount: read localStorage and restore state
+  useEffect(() => {
+    const s = loadSaved()
+    if (s) {
+      if (s.settings) setSettings({ ...DEFAULT_SETTINGS, ...s.settings })
+      if (s.phase) setPhase(s.phase as Phase)
+      if (s.totalSeconds) setTotalSeconds(s.totalSeconds)
+
+      let secs: number = s.secondsLeft ?? DEFAULT_SETTINGS.focus * 60
+      let wasRunning: boolean = s.running ?? false
+      if (s.running && s.savedAt) {
+        const elapsed = Math.floor((Date.now() - s.savedAt) / 1000)
+        secs = Math.max(0, secs - elapsed)
+        if (elapsed >= (s.secondsLeft ?? 0)) wasRunning = false
+      }
+      setSecondsLeft(secs)
+      setRunning(wasRunning)
+
+      if (s.sessionsDone != null) setSessionsDone(s.sessionsDone)
+      if (s.focusMinutes != null) setFocusMinutes(s.focusMinutes)
+      if (s.history) setHistory(s.history)
+    }
+    setHydrated(true)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  // Persist to localStorage — only after hydration to avoid overwriting saved state
+  useEffect(() => {
+    if (!hydrated) return
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({
+        phase,
+        settings,
+        secondsLeft,
+        totalSeconds,
+        running,
+        sessionsDone,
+        focusMinutes,
+        history,
+        savedAt: Date.now(),
+      }))
+    } catch {}
+  }, [hydrated, phase, settings, secondsLeft, totalSeconds, running, sessionsDone, focusMinutes, history])
 
   const stateRef = useRef({ phase, settings, secondsLeft, sessionsDone })
   useEffect(() => {

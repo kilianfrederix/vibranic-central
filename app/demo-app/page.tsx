@@ -10,7 +10,7 @@ import { AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react'
 // Initialize the SDK
 const vibranic = new VibranicClient({
     hubUrl: 'http://localhost:3000', // Your Vibranic Central URL
-    apiKey: 'demo-app-api-key', // Replace with actual API key from DB
+    apiKey: 'vib_354a736c162143feafc88e84c059574f', // Replace with actual API key from DB
     batchSize: 5,
     flushInterval: 3000
 })
