@@ -1,36 +1,93 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vibranic Central
 
-## Getting Started
+> One dashboard to monitor every app you build — real-time events, alerts and status, all in one place.
 
-First, run the development server:
+**Live:** https://vibranic-central.com
+
+![Vibranic Central dashboard](docs/dashboard.png)
+
+---
+
+## About
+
+Vibranic Central is a personal **diagnostics & monitoring hub**. Apps connect through the **Vibranic SDK** and stream their events, errors and metrics to one always-on dashboard — so instead of checking every project separately, you see the health of your whole suite at a glance.
+
+It's the backbone of the Vibranic app suite: every app I build reports into Central.
+
+---
+
+## Features
+
+- **Unified event timeline** — see events, errors and warnings over time from every linked app, streamed in via the Vibranic SDK.
+- **Per-app alerts** — set alerts on specific apps and get notified the moment one fails.
+- **API key management** — generate API keys to connect new apps to Central in seconds.
+- **Built-in Pomodoro** — manage your focus and breaks without leaving the dashboard.
+- **Polished UX** — light/dark theme, global search across apps & events, responsive layout.
+
+---
+
+## Tech stack
+
+| Layer | Tech |
+|---|---|
+| Framework | Next.js 16 (App Router) + React 19 + TypeScript |
+| Styling | Tailwind CSS v4 + shadcn/ui (Radix UI) + lucide-react |
+| Charts | Recharts |
+| Database | PostgreSQL (Neon) |
+| ORM | Prisma 6 |
+| Auth | OpenID Connect (Passport + sessions) |
+| Hosting | Deployed at vibranic-central.com |
+
+---
+
+## How it works
+
+1. **Register an app** in Central and generate an API key.
+2. **Add the Vibranic SDK** to that app and drop in the key.
+3. The app **streams events** (info / warnings / errors) to Central.
+4. **Watch them live** on the dashboard and set alerts on the apps that matter.
+
+---
+
+## Getting started
 
 ```bash
+# 1. Clone
+git clone https://github.com/kilianfrederix/vibranic-central.git
+cd vibranic-central
+
+# 2. Install
+npm install
+
+# 3. Environment — create .env.local with:
+#   DATABASE_URL=...      (Neon PostgreSQL connection string)
+#   SESSION_SECRET=...    (random secret for session signing)
+#   ISSUER_URL=...        (OpenID issuer URL)
+#   REPL_ID=...           (auth client id)
+#   ADMIN_API_KEY=...     (admin access key)
+
+# 4. Database
+npm run db:generate   # prisma generate
+npm run db:push       # sync schema to the database
+npm run db:seed       # optional: seed demo data
+
+# 5. Run
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+App runs at `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+---
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Roadmap
 
-## Learn More
+- [ ] Migrate authentication to Clerk and deploy on Vercel
+- [ ] Deeper **vibranic-orbit** integration (the productivity app in the suite)
+- [ ] More alert channels (email / webhook)
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Author
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+**Kilian Frederix** — full-stack web developer, design-driven.
+[vibranic-central.com](https://vibranic-central.com) · [LinkedIn](https://www.linkedin.com/in/kilian-frederix/)
